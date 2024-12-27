@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from app.services.calculator_service import CalculatorServices
 from app.services.depreciation_calculator import PenyusutanCalculatorServices
+from app.services.present_value_calculator import PresentValueServices
 
 router = APIRouter(prefix="/calculator", tags=["Calculator"])
 
@@ -76,5 +77,20 @@ def penyusutan(
                 "biaya_per_bulan": biaya_per_bulan_list,
                 "biaya_per_tahun": biaya_per_tahun_list,
             }
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@router.get("/present-value", status_code=status.HTTP_200_OK)
+def present_value(
+    future_value: float = Query(..., description="Future Value (must be > 0)"),
+    rate: float = Query(..., description="Rate in %"),
+    period: float = Query(0, description="Period times"),
+    service: PresentValueServices = Depends()
+):
+    try:      
+        present_value = service.present_value(future_value, rate, period)
+        return {
+            "present_value": present_value,
+        }
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
