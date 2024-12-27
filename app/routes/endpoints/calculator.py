@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
+from typing import List
 from app.services.calculator_service import CalculatorServices
 from app.services.depreciation_calculator import PenyusutanCalculatorServices
 from app.services.present_value_calculator import PresentValueServices
+from app.services.goal_seeking_weighted_average import GoalSeekingWeightedAverage
+
 
 router = APIRouter(prefix="/calculator", tags=["Calculator"])
 
@@ -91,6 +94,30 @@ def present_value(
         present_value = service.present_value(future_value, rate, period)
         return {
             "present_value": present_value,
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    
+@router.get("/weighted-average", status_code=status.HTTP_200_OK)
+def weighted_average(
+    n_total: float = Query(1, description="Total row of loss rate and weight"), 
+    loss_rate_array: List[float] = Query(..., description="Lost rate value in %"),
+    weight_array: List[float] = Query(..., description="Weight value in %"),
+    service: GoalSeekingWeightedAverage = Depends()
+):
+    try:      
+        if len(loss_rate_array) != n_total and len(weight_array) != n_total:
+            raise ValueError("The length of loss_rate_array and weight_array must match n_total.")
+
+        normal_average = service.normal_average(loss_rate_array)
+        weighted_average = service.weighted_average(loss_rate_array, weight_array)
+
+        weight_difference = service.weight_difference(weight_array)
+    
+        return {
+            "normal_average": normal_average,
+            "weighted_average": weighted_average,
+            "weight_difference": weight_difference,
         }
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
